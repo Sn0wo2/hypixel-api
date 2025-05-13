@@ -296,7 +296,7 @@ func (c *Client) GetGardenData(profile string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bingo/get
 func (c *Client) GetBingoData(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "bingo", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/bingo", &Params{
 		"uuid": uuid,
 	})
 }
