@@ -50,12 +50,5 @@ func (c *Client) SetAPIKey(key string) {
 }
 
 func (c *Client) GetFullPath(path string) string {
-	sb := strings.Builder{}
-	sb.Grow(len(c.BaseURL) + len(path) + 1)
-	sb.WriteString(c.BaseURL)
-	if !strings.HasSuffix(c.BaseURL, "/") {
-		sb.WriteString("/")
-	}
-	sb.WriteString(path)
-	return sb.String()
+	return strings.TrimRight(c.BaseURL, "/") + "/" + strings.TrimLeft(path, "/")
 }
