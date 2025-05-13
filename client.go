@@ -2,12 +2,14 @@ package hypixel
 
 import (
 	"net/http"
+	"strings"
 )
 
 type Client struct {
 	BaseURL string
 	APIKey  string
 	HTTP    *http.Client
+	Rate    *RateLimit
 }
 
 // NewClient creates a new hypixel client
@@ -19,6 +21,7 @@ func NewClient(key string) *Client {
 		BaseURL: "https://api.hypixel.net/",
 		APIKey:  key,
 		HTTP:    http.DefaultClient,
+		Rate:    NewRateLimit(),
 	}
 }
 
@@ -44,4 +47,15 @@ func (c *Client) SetHTTPClient(client *http.Client) {
 
 func (c *Client) SetAPIKey(key string) {
 	c.APIKey = key
+}
+
+func (c *Client) GetFullPath(path string) string {
+	sb := strings.Builder{}
+	sb.Grow(len(c.BaseURL) + len(path) + 1)
+	sb.WriteString(c.BaseURL)
+	if !strings.HasSuffix(c.BaseURL, "/") {
+		sb.WriteString("/")
+	}
+	sb.WriteString(path)
+	return sb.String()
 }
