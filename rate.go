@@ -72,3 +72,9 @@ func (r *RateLimit) ResetAt() time.Time {
 	defer r.mu.RUnlock()
 	return r.resetAt
 }
+
+func (r *RateLimit) Reset() {
+	r.mu.Lock()
+	r.remaining = -1
+	r.mu.Unlock()
+}
