@@ -7,74 +7,87 @@ import (
 	"time"
 )
 
-// RateLimit tracks API call quota and reset time.
 type RateLimit struct {
 	mu        sync.RWMutex
-	remaining int
-	resetAt   time.Time
+	remaining int       // current remaining requests
+	resetAt   time.Time // next reset time
+	trusted   bool      // whether trusted initial headers have been received
 }
 
-// NewRateLimit returns an uninitialized RateLimit (no blocking until headers seen).
 func NewRateLimit() *RateLimit {
-	return &RateLimit{remaining: -1}
+	return &RateLimit{
+		remaining: -1, // -1 indicates unknown state
+	}
 }
 
-// WaitIfNeeded blocks if quota is exhausted until reset time (max 5m).
+// WaitIfNeeded blocks until the next reset window if remaining quota is exhausted
 func (r *RateLimit) WaitIfNeeded() {
-	now := time.Now()
-
 	r.mu.RLock()
-	rem, reset := r.remaining, r.resetAt
+	remaining, reset := r.remaining, r.resetAt
 	r.mu.RUnlock()
 
-	if rem < 0 || rem > 0 || !now.Before(reset) {
+	if remaining != 0 || time.Now().After(reset) {
 		return
 	}
-	wait := reset.Sub(now)
-	if wait > 5*time.Minute {
-		wait = 5 * time.Minute
+
+	if sleep := time.Until(reset); sleep > 0 {
+		const maxSleep = 5 * time.Minute // prevent excessive waiting
+		if sleep > maxSleep {
+			sleep = maxSleep
+		}
+		time.Sleep(sleep)
 	}
-	time.Sleep(wait)
 }
 
-// UpdateRateLimitInfo parses headers to update quota and reset time.
-func (r *RateLimit) UpdateRateLimitInfo(h http.Header) error {
+// UpdateFromHeaders updates rate limits from HTTP headers, auto-consuming on trusted state
+func (r *RateLimit) UpdateFromHeaders(h http.Header) error {
 	remStr, resetStr := h.Get("RateLimit-Remaining"), h.Get("RateLimit-Reset")
 	if remStr == "" || resetStr == "" {
-		return nil
+		return nil // ignore non-rate-limited responses
 	}
+
 	rem, err := strconv.Atoi(remStr)
 	if err != nil {
 		return err
 	}
+
 	secs, err := strconv.Atoi(resetStr)
 	if err != nil {
 		return err
 	}
+	newReset := time.Now().Add(time.Duration(secs) * time.Second)
 
 	r.mu.Lock()
-	r.remaining = rem
-	r.resetAt = time.Now().Add(time.Duration(secs) * time.Second)
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	if !r.trusted || now.After(r.resetAt) {
+		if rem > 0 { // Only trust headers with positive remaining count
+			r.remaining = rem
+			r.resetAt = newReset
+			r.trusted = true
+		}
+	} else if r.remaining > 0 {
+		r.remaining-- // Local consumption for subsequent requests
+	}
+
 	return nil
 }
 
-// Remaining returns the current remaining request count.
-func (r *RateLimit) Remaining() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.remaining
-}
-
-// ResetAt returns the time when quota resets.
-func (r *RateLimit) ResetAt() time.Time {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.resetAt
-}
-
+// Reset clears all rate limiting state
 func (r *RateLimit) Reset() {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.remaining = -1
-	r.mu.Unlock()
+	r.resetAt = time.Time{}
+	r.trusted = false
+}
+
+// String returns current rate limit status for debugging
+func (r *RateLimit) String() string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return strconv.Itoa(r.remaining) + " remaining until " +
+		r.resetAt.Format(time.RFC3339) + " (trusted:" +
+		strconv.FormatBool(r.trusted) + ")"
 }
