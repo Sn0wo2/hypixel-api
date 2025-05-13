@@ -16,12 +16,12 @@ type Client struct {
 // key is your hypixel api key
 //
 // https://api.hypixel.net/
-func NewClient(key string) *Client {
+func NewClient(key string, rate *RateLimit) *Client {
 	return &Client{
-		BaseURL: "https://api.hypixel.net/",
+		BaseURL: "https://api.hypixel.net/v2/",
 		APIKey:  key,
 		HTTP:    http.DefaultClient,
-		Rate:    NewRateLimit(),
+		Rate:    rate,
 	}
 }
 
