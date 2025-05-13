@@ -50,3 +50,16 @@ func (c *Client) Authentication(header ...http.Header) http.Header {
 	h.Set("API-Key", c.APIKey)
 	return h
 }
+
+// GetPlayerData Data of a specific player, including game stats
+//
+// https://api.hypixel.net/#tag/Player-Data
+// 200 Get player's data
+// 400 Some data is missing, this is usually a field.
+// 403 Access is forbidden, usually due to an invalid API key being used.
+// 429 A request limit has been reached, usually this is due to the limit on the key being reached but can also be triggered by a global throttle.
+func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
+	return c.Send(http.MethodGet, c.Authentication(), "v2/player", &Params{
+		"uuid": uuid,
+	})
+}
