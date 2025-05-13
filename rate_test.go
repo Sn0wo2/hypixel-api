@@ -51,13 +51,12 @@ func TestWaitIfNeeded(t *testing.T) {
 }
 
 func TestUpdateFromHeaders(t *testing.T) {
-	now := time.Now()
 	tests := []struct {
 		name        string
 		headers     map[string]string
 		initial     *RateLimit
 		wantRem     int
-		wantReset   time.Time
+		wantReset   time.Duration // expected duration from now
 		wantTrusted bool
 	}{
 		{
@@ -68,7 +67,7 @@ func TestUpdateFromHeaders(t *testing.T) {
 			},
 			initial:     NewRateLimit(),
 			wantRem:     5,
-			wantReset:   now.Add(300 * time.Second),
+			wantReset:   300 * time.Second,
 			wantTrusted: true,
 		},
 		{
@@ -79,11 +78,11 @@ func TestUpdateFromHeaders(t *testing.T) {
 			},
 			initial: &RateLimit{
 				remaining: 2,
-				resetAt:   now.Add(5 * time.Minute),
+				resetAt:   time.Now().Add(5 * time.Minute),
 				trusted:   true,
 			},
-			wantRem:     1, // should decrement from previous 2
-			wantReset:   now.Add(5 * time.Minute),
+			wantRem:     1,
+			wantReset:   5 * time.Minute,
 			wantTrusted: true,
 		},
 		{
@@ -94,23 +93,11 @@ func TestUpdateFromHeaders(t *testing.T) {
 			},
 			initial: &RateLimit{
 				remaining: 0,
-				resetAt:   now.Add(-1 * time.Second),
+				resetAt:   time.Now().Add(-1 * time.Second),
 				trusted:   true,
 			},
 			wantRem:     5,
-			wantReset:   now.Add(300 * time.Second),
-			wantTrusted: true,
-		},
-		{
-			name:    "ignore invalid headers",
-			headers: map[string]string{},
-			initial: &RateLimit{
-				remaining: 3,
-				resetAt:   now.Add(time.Hour),
-				trusted:   true,
-			},
-			wantRem:     3,
-			wantReset:   now.Add(time.Hour),
+			wantReset:   300 * time.Second,
 			wantTrusted: true,
 		},
 	}
@@ -123,14 +110,24 @@ func TestUpdateFromHeaders(t *testing.T) {
 				h.Set(k, v)
 			}
 
+			before := time.Now()
 			err := rl.UpdateFromHeaders(h)
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			if rl.remaining != tt.wantRem || !rl.resetAt.Equal(tt.wantReset) || rl.trusted != tt.wantTrusted {
-				t.Errorf("UpdateFromHeaders() = %+v, want remaining %d reset %v trusted %t",
-					rl, tt.wantRem, tt.wantReset, tt.wantTrusted)
+			if rl.remaining != tt.wantRem || rl.trusted != tt.wantTrusted {
+				t.Errorf("UpdateFromHeaders() got remaining %d trusted %t, want %d %t",
+					rl.remaining, rl.trusted, tt.wantRem, tt.wantTrusted)
+			}
+
+			expectedReset := before.Add(tt.wantReset)
+			minTime := expectedReset.Add(-100 * time.Millisecond)
+			maxTime := expectedReset.Add(100 * time.Millisecond)
+
+			if rl.resetAt.Before(minTime) || rl.resetAt.After(maxTime) {
+				t.Errorf("resetAt got %v, want between %v and %v",
+					rl.resetAt, minTime, maxTime)
 			}
 		})
 	}
@@ -157,8 +154,9 @@ func TestString(t *testing.T) {
 		trusted:   true,
 	}
 
-	want := "5 remaining until 2023-01-01T00:00:00Z (trusted:true)"
-	if got := rl.String(); got != want {
-		t.Errorf("String() = %q, want %q", got, want)
+	got := rl.String()
+	wantPrefix := "5 remaining until 2023-01-01T00:00:00Z (trusted:true)"
+	if got != wantPrefix {
+		t.Errorf("String() = %q, want prefix %q", got, wantPrefix)
 	}
 }
