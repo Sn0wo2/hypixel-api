@@ -57,6 +57,7 @@ func (c *Client) Authentication(header ...http.Header) http.Header {
 }
 
 // GetPlayerData Data of a specific player, including game stats
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data
 func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
@@ -66,6 +67,7 @@ func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
 }
 
 // GetRecentGames The recently played games of a specific player
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1recentgames/get
 func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
@@ -75,6 +77,7 @@ func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
 }
 
 // GetStatus The current online status of a specific player
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1status/get
 func (c *Client) GetStatus(uuid string) (*http.Response, error) {
@@ -84,6 +87,7 @@ func (c *Client) GetStatus(uuid string) (*http.Response, error) {
 }
 
 // GetGuild Retrieve a Guild by a player, id, or name
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1guild/get
 func (c *Client) GetGuild(id, player, name string) (*http.Response, error) {
@@ -185,6 +189,7 @@ func (c *Client) GetSkyBlockCurrentBingoEvent() (*http.Response, error) {
 }
 
 // GetSkyBlockNews News
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1news/get
 func (c *Client) GetSkyBlockNews() (*http.Response, error) {
@@ -193,6 +198,7 @@ func (c *Client) GetSkyBlockNews() (*http.Response, error) {
 
 // GetAuctions Request auction(s) by the auction UUID, player UUID, or profile UUID.
 // Returns the auctions selected by the provided query. Only one query parameter can be used in a single request, and cannot be filtered by multiple.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auction/get
 func (c *Client) GetAuctions(uuid, player, profile string) (*http.Response, error) {
@@ -243,6 +249,7 @@ func (c *Client) GetBazaar() (*http.Response, error) {
 
 // GetProfileByUUID Profile by UUID
 // SkyBlock profile data, such as stats, objectives etc. The data returned can differ depending on the players in-game API settings.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profile/get
 func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
@@ -252,6 +259,7 @@ func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
 }
 
 // GetProfilesByPlayer Profiles by player
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profiles/get
 func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
@@ -262,6 +270,7 @@ func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
 
 // GetMuseumData Museum data by profile ID
 // SkyBlock museum data for all members of the provided profile. The data returned can differ depending on the players in-game API settings.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1museum/get
 func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
@@ -272,6 +281,7 @@ func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
 
 // GetGardenData Garden data by profile ID
 // SkyBlock garden data for the provided profile.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1garden/get
 func (c *Client) GetGardenData(profile string) (*http.Response, error) {
@@ -282,6 +292,7 @@ func (c *Client) GetGardenData(profile string) (*http.Response, error) {
 
 // GetBingoData Bingo data by player
 // Bingo data for participated events of the provided player.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bingo/get
 func (c *Client) GetBingoData(uuid string) (*http.Response, error) {
@@ -300,6 +311,7 @@ func (c *Client) GetActiveOrUpcomingFireSales() (*http.Response, error) {
 
 // GetCurrentlyActivePublicHouses currently active public houses.
 // This data may be cached for a short period of time.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1active/get
 func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
@@ -308,6 +320,7 @@ func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
 
 // GetSpecificHouseInformation Information about a specific house.
 // This data may be cached for a short period of time.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1house/get
 func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, error) {
@@ -318,6 +331,7 @@ func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, erro
 
 // GetSpecificPlayerPublicHouses The public houses for a specific player.//
 // This data may be cached for a short period of time.
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1houses/get
 func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, error) {
@@ -327,6 +341,7 @@ func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, e
 }
 
 // GetActiveNetworkBoosters Active Network Boosters
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1boosters/get
 func (c *Client) GetActiveNetworkBoosters() (*http.Response, error) {
@@ -334,6 +349,7 @@ func (c *Client) GetActiveNetworkBoosters() (*http.Response, error) {
 }
 
 // GetCurrentPlayerCounts Current Player Counts
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1counts/get
 func (c *Client) GetCurrentPlayerCounts() (*http.Response, error) {
@@ -341,6 +357,7 @@ func (c *Client) GetCurrentPlayerCounts() (*http.Response, error) {
 }
 
 // GetCurrentLeaderboards Current Leaderboards
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1leaderboards/get
 func (c *Client) GetCurrentLeaderboards() (*http.Response, error) {
@@ -348,6 +365,7 @@ func (c *Client) GetCurrentLeaderboards() (*http.Response, error) {
 }
 
 // GetPunishmentStatistics Punishment Statistics
+// NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1punishmentstats/get
 func (c *Client) GetPunishmentStatistics() (*http.Response, error) {
