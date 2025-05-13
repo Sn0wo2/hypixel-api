@@ -42,10 +42,10 @@ func (c *Client) Send(method string, head http.Header, path string, params *Para
 	return rsp, nil
 }
 
-// Authentication Add api key to header
+// AuthHeader Add api key to header
 //
 // https://api.hypixel.net/#section/Authentication/ApiKey
-func (c *Client) Authentication(header ...http.Header) http.Header {
+func (c *Client) AuthHeader(header ...http.Header) http.Header {
 	var h http.Header
 	if len(header) == 0 {
 		h = http.Header{}
@@ -61,7 +61,7 @@ func (c *Client) Authentication(header ...http.Header) http.Header {
 //
 // https://api.hypixel.net/#tag/Player-Data
 func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "player", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "player", &Params{
 		"uuid": uuid,
 	})
 }
@@ -71,7 +71,7 @@ func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1recentgames/get
 func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "recentgames", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "recentgames", &Params{
 		"uuid": uuid,
 	})
 }
@@ -81,7 +81,7 @@ func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1status/get
 func (c *Client) GetStatus(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "status", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "status", &Params{
 		"uuid": uuid,
 	})
 }
@@ -91,7 +91,7 @@ func (c *Client) GetStatus(uuid string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1guild/get
 func (c *Client) GetGuild(id, player, name string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "guild", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "guild", &Params{
 		"id":     id,
 		"player": player,
 		"name":   name,
@@ -193,7 +193,7 @@ func (c *Client) GetSkyBlockCurrentBingoEvent() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1news/get
 func (c *Client) GetSkyBlockNews() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/news", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/news", nil)
 }
 
 // GetAuctions Request auction(s) by the auction UUID, player UUID, or profile UUID.
@@ -202,7 +202,7 @@ func (c *Client) GetSkyBlockNews() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auction/get
 func (c *Client) GetAuctions(uuid, player, profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/auction", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/auction", &Params{
 		"uuid":    uuid,
 		"player":  player,
 		"profile": profile,
@@ -253,7 +253,7 @@ func (c *Client) GetBazaar() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profile/get
 func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/profile", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/profile", &Params{
 		"profile": profile,
 	})
 }
@@ -263,7 +263,7 @@ func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profiles/get
 func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/profiles", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/profiles", &Params{
 		"uuid": uuid,
 	})
 }
@@ -274,7 +274,7 @@ func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1museum/get
 func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/museum", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/museum", &Params{
 		"profile": profile,
 	})
 }
@@ -285,7 +285,7 @@ func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1garden/get
 func (c *Client) GetGardenData(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "skyblock/garden", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/garden", &Params{
 		"profile": profile,
 	})
 }
@@ -296,7 +296,7 @@ func (c *Client) GetGardenData(profile string) (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bingo/get
 func (c *Client) GetBingoData(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "bingo", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "bingo", &Params{
 		"uuid": uuid,
 	})
 }
@@ -315,7 +315,7 @@ func (c *Client) GetActiveOrUpcomingFireSales() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1active/get
 func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "housing/active", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "housing/active", nil)
 }
 
 // GetSpecificHouseInformation Information about a specific house.
@@ -324,7 +324,7 @@ func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1house/get
 func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "housing/house", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "housing/house", &Params{
 		"house": house,
 	})
 }
@@ -335,7 +335,7 @@ func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, erro
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1houses/get
 func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "housing/houses", &Params{
+	return c.Send(http.MethodGet, c.AuthHeader(), "housing/houses", &Params{
 		"player": player,
 	})
 }
@@ -345,7 +345,7 @@ func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, e
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1boosters/get
 func (c *Client) GetActiveNetworkBoosters() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "boosters", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "boosters", nil)
 }
 
 // GetCurrentPlayerCounts Current Player Counts
@@ -353,7 +353,7 @@ func (c *Client) GetActiveNetworkBoosters() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1counts/get
 func (c *Client) GetCurrentPlayerCounts() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "counts", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "counts", nil)
 }
 
 // GetCurrentLeaderboards Current Leaderboards
@@ -361,7 +361,7 @@ func (c *Client) GetCurrentPlayerCounts() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1leaderboards/get
 func (c *Client) GetCurrentLeaderboards() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "leaderboards", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "leaderboards", nil)
 }
 
 // GetPunishmentStatistics Punishment Statistics
@@ -369,5 +369,5 @@ func (c *Client) GetCurrentLeaderboards() (*http.Response, error) {
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1punishmentstats/get
 func (c *Client) GetPunishmentStatistics() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.Authentication(), "punishmentstats", nil)
+	return c.Send(http.MethodGet, c.AuthHeader(), "punishmentstats", nil)
 }

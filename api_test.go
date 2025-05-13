@@ -7,7 +7,7 @@ import (
 
 func TestClient_Authentication(t *testing.T) {
 	h := http.Header{}
-	if NewClient("test1", nil).Authentication(h).Get("API-Key") != "test1" {
+	if NewClient("test1", nil).AuthHeader(h).Get("API-Key") != "test1" {
 		t.Errorf("expected 'test1', got %s", h.Get("API-Key"))
 	}
 }
