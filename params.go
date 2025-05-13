@@ -9,6 +9,8 @@ import (
 // use fmt.Sprint parse to string
 type Params map[any]any
 
+// String Generate url string
+// If value is empty, it will be ignored
 func (p *Params) String(full string) string {
 	if len(*p) == 0 {
 		return full
@@ -20,8 +22,13 @@ func (p *Params) String(full string) string {
 
 	q := u.Query()
 	for k, v := range *p {
-		q.Set(fmt.Sprint(k), fmt.Sprint(v))
+		val := fmt.Sprint(v)
+		if val == "" {
+			continue
+		}
+		q.Set(fmt.Sprint(k), val)
 	}
+
 	u.RawQuery = q.Encode()
 
 	return u.String()
