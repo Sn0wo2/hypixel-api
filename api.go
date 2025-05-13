@@ -29,15 +29,15 @@ func (c *Client) Send(method string, head http.Header, path string, params *Para
 	if head != nil {
 		req.Header = head
 	}
-	if c.Rate != nil {
-		c.Rate.WaitIfNeeded()
+	if c.rate != nil {
+		c.rate.WaitIfNeeded()
 	}
-	rsp, err := c.HTTP.Do(req)
+	rsp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	if c.Rate != nil {
-		_ = c.Rate.UpdateFromHeaders(rsp.Header)
+	if c.rate != nil {
+		_ = c.rate.UpdateFromHeaders(rsp.Header)
 	}
 	return rsp, nil
 }
@@ -52,7 +52,7 @@ func (c *Client) Authentication(header ...http.Header) http.Header {
 	} else {
 		h = header[0]
 	}
-	h.Set("API-Key", c.APIKey)
+	h.Set("API-Key", c.apiKey)
 	return h
 }
 

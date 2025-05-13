@@ -11,30 +11,30 @@ func TestNewClient(t *testing.T) {
 
 	client := NewClient(apiKey, rateLimit)
 
-	if client.APIKey != apiKey {
-		t.Errorf("Expected API key %s, got %s", apiKey, client.APIKey)
+	if client.apiKey != apiKey {
+		t.Errorf("Expected API key %s, got %s", apiKey, client.apiKey)
 	}
 
-	if client.BaseURL != "https://api.hypixel.net/v2/" {
-		t.Errorf("Expected base URL %s, got %s", "https://api.hypixel.net/v2/", client.BaseURL)
+	if client.baseURL != "https://api.hypixel.net/v2/" {
+		t.Errorf("Expected base URL %s, got %s", "https://api.hypixel.net/v2/", client.baseURL)
 	}
 
-	if client.HTTP != http.DefaultClient {
+	if client.httpClient != http.DefaultClient {
 		t.Error("Expected default HTTP client")
 	}
 
-	if client.Rate != rateLimit {
-		t.Error("Rate limit not set correctly")
+	if client.rate != rateLimit {
+		t.Error("rate limit not set correctly")
 	}
 }
 
 func TestGetters(t *testing.T) {
 	customHTTP := &http.Client{}
 	client := &Client{
-		BaseURL: "https://custom.url/",
-		APIKey:  "custom-key",
-		HTTP:    customHTTP,
-		Rate:    &RateLimit{},
+		baseURL:    "https://custom.url/",
+		apiKey:     "custom-key",
+		httpClient: customHTTP,
+		rate:       &RateLimit{},
 	}
 
 	t.Run("GetBaseURL", func(t *testing.T) {
@@ -62,24 +62,24 @@ func TestSetters(t *testing.T) {
 	t.Run("SetBaseURL", func(t *testing.T) {
 		newURL := "https://new.url/"
 		client.SetBaseURL(newURL)
-		if client.BaseURL != newURL {
-			t.Errorf("SetBaseURL() failed, got %v, want %v", client.BaseURL, newURL)
+		if client.baseURL != newURL {
+			t.Errorf("SetBaseURL() failed, got %v, want %v", client.baseURL, newURL)
 		}
 	})
 
 	t.Run("SetAPIKey", func(t *testing.T) {
 		newKey := "new-key"
 		client.SetAPIKey(newKey)
-		if client.APIKey != newKey {
-			t.Errorf("SetAPIKey() failed, got %v, want %v", client.APIKey, newKey)
+		if client.apiKey != newKey {
+			t.Errorf("SetAPIKey() failed, got %v, want %v", client.apiKey, newKey)
 		}
 	})
 
 	t.Run("SetHTTPClient", func(t *testing.T) {
 		newClient := &http.Client{}
 		client.SetHTTPClient(newClient)
-		if client.HTTP != newClient {
-			t.Errorf("SetHTTPClient() failed, got %v, want %v", client.HTTP, newClient)
+		if client.httpClient != newClient {
+			t.Errorf("SetHTTPClient() failed, got %v, want %v", client.httpClient, newClient)
 		}
 	})
 }
@@ -119,7 +119,7 @@ func TestGetFullPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{BaseURL: tt.baseURL}
+			client := &Client{baseURL: tt.baseURL}
 			result := client.GetFullPath(tt.path)
 			if result != tt.expected {
 				t.Errorf("GetFullPath() = %v, want %v", result, tt.expected)
