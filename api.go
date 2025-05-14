@@ -324,24 +324,15 @@ func (c *Client) GetSkyBlockNews() (Response, error) {
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auction/get
 func (c *Client) GetAuctions(uuid, player, profile string) (Response, error) {
-	params := Params{}
-	// API states only one query parameter can be used.
-	// This implementation will add whichever is non-empty,
-	// prioritizing uuid, then player, then profile if multiple are provided.
-	// A more robust implementation might return an error if more than one is set.
-	if uuid != "" {
-		params["uuid"] = uuid
-	} else if player != "" {
-		params["player"] = player
-	} else if profile != "" {
-		params["profile"] = profile
-	}
-
 	return c.Get(Request{
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/auction",
-		Params: &params,
+		Params: &Params{
+			"uuid":    uuid,
+			"player":  player,
+			"profile": profile,
+		},
 	})
 }
 
@@ -389,6 +380,8 @@ func (c *Client) GetRecentlyEndedAuctions() (Response, error) {
 // sellPrice and are the weighted average of the top 2% of orders by volume.buyPrice
 // movingWeek is the historic transacted volume from last 7d + live state.
 // sellOrders and are the count of active orders. buyOrders
+//
+// https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bazaar/get
 func (c *Client) GetBazaar() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
@@ -466,13 +459,11 @@ func (c *Client) GetGardenData(profile string) (Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bingo/get
-// Note: Path conflicts with GetSkyBlockCurrentBingoEvent if both use "skyblock/bingo". The API doc link here is to /v2/skyblock/bingo.
-// This GET request to /v2/skyblock/bingo requires a `uuid` param for player data.
 func (c *Client) GetBingoData(uuid string) (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
-		Path:   "skyblock/bingo", // Assuming this path is correct for player-specific bingo data when uuid is provided.
+		Path:   "skyblock/bingo",
 		Params: &Params{
 			"uuid": uuid,
 		},
