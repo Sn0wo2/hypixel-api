@@ -55,7 +55,7 @@ func (c *Client) GetCallBack() CallBack {
 }
 
 func (c *Client) GetFullPath(path string) string {
-	return strings.TrimRight(c.baseURL, "/") + "/" + strings.TrimLeft(path, "/")
+	return strings.TrimRight(c.GetBaseURL(), "/") + "/" + strings.TrimLeft(path, "/")
 }
 
 func (c *Client) SetBaseURL(url string) {

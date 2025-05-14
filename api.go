@@ -60,7 +60,7 @@ func (c *Client) Get(r Request) (Response, error) {
 	}
 	defer rsp.Body.Close()
 	if c.GetRate() != nil {
-		_ = c.rate.UpdateFromHeaders(rsp.Header)
+		_ = c.GetRate().UpdateFromHeaders(rsp.Header)
 	}
 	content, err := io.ReadAll(rsp.Body)
 	if err != nil {
