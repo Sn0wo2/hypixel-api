@@ -66,9 +66,11 @@ func (c *Client) Get(r Request) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	response, err := c.GetCallBack()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
-	if err == nil {
-		return response, nil
+	if c.GetCallBack() == nil {
+		response, err := c.GetCallBack()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
+		if err == nil {
+			return response, nil
+		}
 	}
 	return Response{Path: full, Status: rsp.StatusCode, Content: content}, nil
 }
@@ -137,21 +139,15 @@ func (c *Client) GetStatus(uuid string) (Response, error) {
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1guild/get
 func (c *Client) GetGuild(id, player, name string) (Response, error) {
-	params := Params{}
-	if id != "" {
-		params["id"] = id
-	}
-	if player != "" {
-		params["player"] = player
-	}
-	if name != "" {
-		params["name"] = name
-	}
 	return c.Get(Request{
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "guild",
-		Params: &params,
+		Params: &Params{
+			"id":     id,
+			"player": player,
+			"name":   name,
+		},
 	})
 }
 
