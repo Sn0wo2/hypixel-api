@@ -10,12 +10,15 @@ type Request struct {
 	Method  string
 	Header  http.Header
 	Path    string
+	URL     string // Replace full url in PreRequestHook and Callback!
 	Params  *Params
 	Payload []byte
 }
 
 type Response struct {
+	Header  http.Header
 	Path    string
+	URL     string // Replace full url in Callback
 	Status  int
 	Content []byte
 }
@@ -25,18 +28,17 @@ func (c *Client) Get(r Request) (Response, error) {
 	if r.Method == "" {
 		r.Method = http.MethodGet
 	}
-	full := c.GetFullPath(r.Path)
+	r.URL = c.GetFullPath(r.Path)
 	if r.Params != nil {
-		full = r.Params.String(full)
+		r.URL = r.Params.String(r.URL)
 	}
-	r.Path = full
 	if c.GetPreRequestHook() != nil {
 		response, err := c.GetPreRequestHook()(r)
 		if err == nil {
 			return response, nil
 		}
 	}
-	req, err := http.NewRequest(r.Method, r.Path,
+	req, err := http.NewRequest(r.Method, r.URL,
 		func() io.Reader {
 			if r.Payload != nil {
 				return bytes.NewReader(r.Payload)
@@ -65,13 +67,14 @@ func (c *Client) Get(r Request) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
+	resp := Response{Path: r.Path, URL: r.URL, Status: rsp.StatusCode, Content: content}
 	if c.GetCallback() == nil {
-		response, err := c.GetCallback()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
+		response, err := c.GetCallback()(r, resp, err)
 		if err == nil {
 			return response, nil
 		}
 	}
-	return Response{Path: full, Status: rsp.StatusCode, Content: content}, nil
+	return resp, nil
 }
 
 // AuthHeader Add api key to header
