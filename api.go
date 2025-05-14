@@ -2,7 +2,6 @@ package hypixel
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -309,7 +308,7 @@ func (c *Client) GetSkyBlockNews() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
-		Path:   "skyblock/news", // Corrected path based on common API patterns, original might be /v2/skyblock/news
+		Path:   "skyblock/news",
 		Params: nil,
 	})
 }
@@ -339,10 +338,10 @@ func (c *Client) GetAuctions(uuid, player, profile string) (Response, error) {
 func (c *Client) GetActiveAuctions(page uint) (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil, // API docs for this specific endpoint don't explicitly state API key needed, but often they are for paginated resources. Assuming none for now.
+		Header: nil,
 		Path:   "skyblock/auctions",
 		Params: &Params{
-			"page": fmt.Sprintf("%d", page), // Convert uint to string for query parameter
+			"page": page,
 		},
 	})
 }
