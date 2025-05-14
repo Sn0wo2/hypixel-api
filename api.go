@@ -2,44 +2,75 @@ package hypixel
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 )
 
-// Send Hypixel API HTTP Request
-func (c *Client) Send(method string, head http.Header, path string, params *Params, payload ...byte) (*http.Response, error) {
-	if method == "" {
-		method = http.MethodGet
+type Request struct {
+	Method  string
+	Header  http.Header
+	Path    string
+	Params  *Params
+	Payload []byte
+}
+
+type Response struct {
+	Path    string
+	Status  int
+	Content []byte
+}
+
+// Get Hypixel API HTTP Request
+func (c *Client) Get(r Request) (Response, error) {
+	if r.Method == "" {
+		r.Method = http.MethodGet
 	}
-	full := c.GetFullPath(path)
-	if params != nil {
-		full = params.String(full)
+	full := c.GetFullPath(r.Path)
+	if r.Params != nil {
+		full = r.Params.String(full)
 	}
-	req, err := http.NewRequest(method, full,
+	r.Path = full
+	if c.GetPreRequestHook() != nil {
+		response, err := c.GetPreRequestHook()(r)
+		if err == nil {
+			return response, nil
+		}
+	}
+	req, err := http.NewRequest(r.Method, r.Path,
 		func() io.Reader {
-			if payload != nil {
-				return bytes.NewReader(payload)
+			if r.Payload != nil {
+				return bytes.NewReader(r.Payload)
 			}
 			return nil
 		}(),
 	)
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
-	if head != nil {
-		req.Header = head
+	if r.Header != nil {
+		req.Header = r.Header
 	}
-	if c.rate != nil {
-		c.rate.WaitIfNeeded()
+	if c.GetRate() != nil {
+		c.GetRate().WaitIfNeeded()
 	}
-	rsp, err := c.httpClient.Do(req)
+	rsp, err := c.GetHTTPClient().Do(req)
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
-	if c.rate != nil {
+	defer rsp.Body.Close()
+	if c.GetRate() != nil {
 		_ = c.rate.UpdateFromHeaders(rsp.Header)
 	}
-	return rsp, nil
+	content, err := io.ReadAll(rsp.Body)
+	if err != nil {
+		return Response{}, err
+	}
+	response, err := c.GetCallBack()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
+	if err == nil {
+		return response, nil
+	}
+	return Response{Path: full, Status: rsp.StatusCode, Content: content}, nil
 }
 
 // AuthHeader Add api key to header
@@ -60,9 +91,14 @@ func (c *Client) AuthHeader(header ...http.Header) http.Header {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data
-func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "player", &Params{
-		"uuid": uuid,
+func (c *Client) GetPlayerData(uuid string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "player",
+		Params: &Params{
+			"uuid": uuid,
+		},
 	})
 }
 
@@ -70,9 +106,14 @@ func (c *Client) GetPlayerData(uuid string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1recentgames/get
-func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "recentgames", &Params{
-		"uuid": uuid,
+func (c *Client) GetRecentGames(uuid string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "recentgames",
+		Params: &Params{
+			"uuid": uuid,
+		},
 	})
 }
 
@@ -80,9 +121,14 @@ func (c *Client) GetRecentGames(uuid string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1status/get
-func (c *Client) GetStatus(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "status", &Params{
-		"uuid": uuid,
+func (c *Client) GetStatus(uuid string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "status",
+		Params: &Params{
+			"uuid": uuid,
+		},
 	})
 }
 
@@ -90,11 +136,22 @@ func (c *Client) GetStatus(uuid string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Player-Data/paths/~1v2~1guild/get
-func (c *Client) GetGuild(id, player, name string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "guild", &Params{
-		"id":     id,
-		"player": player,
-		"name":   name,
+func (c *Client) GetGuild(id, player, name string) (Response, error) {
+	params := Params{}
+	if id != "" {
+		params["id"] = id
+	}
+	if player != "" {
+		params["player"] = player
+	}
+	if name != "" {
+		params["name"] = name
+	}
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "guild",
+		Params: &params,
 	})
 }
 
@@ -102,98 +159,163 @@ func (c *Client) GetGuild(id, player, name string) (*http.Response, error) {
 // Returns information about Hypixel Games. This endpoint is in early development and we are working to add more information when possible
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1games/get
-func (c *Client) GetGamesInformation() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/games", nil)
+func (c *Client) GetGamesInformation() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/games",
+		Params: nil,
+	})
 }
 
 // GetAchievements Achievements
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1achievements/get
-func (c *Client) GetAchievements() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/achievements", nil)
+func (c *Client) GetAchievements() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/achievements",
+		Params: nil,
+	})
 }
 
 // GetChallenges Challenges
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1challenges/get
-func (c *Client) GetChallenges() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/challenges", nil)
+func (c *Client) GetChallenges() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/challenges",
+		Params: nil,
+	})
 }
 
 // GetQuests Quests
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1quests/get
-func (c *Client) GetQuests() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/quests", nil)
+func (c *Client) GetQuests() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/quests",
+		Params: nil,
+	})
 }
 
 // GetGuildAchievements Guild Achievements
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1guilds~1achievements/get
-func (c *Client) GetGuildAchievements() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/guilds/achievements", nil)
+func (c *Client) GetGuildAchievements() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/guilds/achievements",
+		Params: nil,
+	})
 }
 
 // GetVanityPets Vanity Pets
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1vanity~1pets/get
-func (c *Client) GetVanityPets() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/vanity/pets", nil)
+func (c *Client) GetVanityPets() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/vanity/pets",
+		Params: nil,
+	})
 }
 
 // GetVanityCompanions Vanity Companions
 //
 // https://api.hypixel.net/#tag/Resources/paths/~1v2~1resources~1vanity~1companions/get
-func (c *Client) GetVanityCompanions() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/vanity/companions", nil)
+func (c *Client) GetVanityCompanions() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/vanity/companions",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockCollections Collections
 // Information regarding Collections in the SkyBlock game.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1collections/get
-func (c *Client) GetSkyBlockCollections() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/skyblock/collections", nil)
+func (c *Client) GetSkyBlockCollections() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/skyblock/collections",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockSkills Skills
 // Information regarding skills in the SkyBlock game.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1skills/get
-func (c *Client) GetSkyBlockSkills() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/skyblock/skills", nil)
+func (c *Client) GetSkyBlockSkills() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/skyblock/skills",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockItems Items
 // Information regarding items in the SkyBlock game.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1items/get
-func (c *Client) GetSkyBlockItems() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/skyblock/items", nil)
+func (c *Client) GetSkyBlockItems() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/skyblock/items",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockElectionAndMayor Election and Mayor
 // Information regarding the current mayor and ongoing election in SkyBlock.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1election/get
-func (c *Client) GetSkyBlockElectionAndMayor() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/skyblock/election", nil)
+func (c *Client) GetSkyBlockElectionAndMayor() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/skyblock/election",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockCurrentBingoEvent Current Bingo Event
 // Information regarding the current bingo event and its goals.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1bingo/get
-func (c *Client) GetSkyBlockCurrentBingoEvent() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "resources/skyblock/bingo", nil)
+func (c *Client) GetSkyBlockCurrentBingoEvent() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "resources/skyblock/bingo",
+		Params: nil,
+	})
 }
 
 // GetSkyBlockNews News
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1resources~1skyblock~1news/get
-func (c *Client) GetSkyBlockNews() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/news", nil)
+func (c *Client) GetSkyBlockNews() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/news", // Corrected path based on common API patterns, original might be /v2/skyblock/news
+		Params: nil,
+	})
 }
 
 // GetAuctions Request auction(s) by the auction UUID, player UUID, or profile UUID.
@@ -201,11 +323,25 @@ func (c *Client) GetSkyBlockNews() (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auction/get
-func (c *Client) GetAuctions(uuid, player, profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/auction", &Params{
-		"uuid":    uuid,
-		"player":  player,
-		"profile": profile,
+func (c *Client) GetAuctions(uuid, player, profile string) (Response, error) {
+	params := Params{}
+	// API states only one query parameter can be used.
+	// This implementation will add whichever is non-empty,
+	// prioritizing uuid, then player, then profile if multiple are provided.
+	// A more robust implementation might return an error if more than one is set.
+	if uuid != "" {
+		params["uuid"] = uuid
+	} else if player != "" {
+		params["player"] = player
+	} else if profile != "" {
+		params["profile"] = profile
+	}
+
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/auction",
+		Params: &params,
 	})
 }
 
@@ -213,9 +349,14 @@ func (c *Client) GetAuctions(uuid, player, profile string) (*http.Response, erro
 // Returns the currently active auctions sorted by last updated first and paginated.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auctions/get
-func (c *Client) GetActiveAuctions(page uint) (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "skyblock/auctions", &Params{
-		"page": page,
+func (c *Client) GetActiveAuctions(page uint) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil, // API docs for this specific endpoint don't explicitly state API key needed, but often they are for paginated resources. Assuming none for now.
+		Path:   "skyblock/auctions",
+		Params: &Params{
+			"page": fmt.Sprintf("%d", page), // Convert uint to string for query parameter
+		},
 	})
 }
 
@@ -223,8 +364,13 @@ func (c *Client) GetActiveAuctions(page uint) (*http.Response, error) {
 // SkyBlock auctions which ended in the last 60 seconds.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1auctions_ended/get
-func (c *Client) GetRecentlyEndedAuctions() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "skyblock/auctions_ended", nil)
+func (c *Client) GetRecentlyEndedAuctions() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "skyblock/auctions_ended",
+		Params: nil,
+	})
 }
 
 // GetBazaar Bazaar
@@ -243,8 +389,13 @@ func (c *Client) GetRecentlyEndedAuctions() (*http.Response, error) {
 // sellPrice and are the weighted average of the top 2% of orders by volume.buyPrice
 // movingWeek is the historic transacted volume from last 7d + live state.
 // sellOrders and are the count of active orders. buyOrders
-func (c *Client) GetBazaar() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "skyblock/bazaar", nil)
+func (c *Client) GetBazaar() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "skyblock/bazaar",
+		Params: nil,
+	})
 }
 
 // GetProfileByUUID Profile by UUID
@@ -252,9 +403,14 @@ func (c *Client) GetBazaar() (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profile/get
-func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/profile", &Params{
-		"profile": profile,
+func (c *Client) GetProfileByUUID(profile string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/profile",
+		Params: &Params{
+			"profile": profile,
+		},
 	})
 }
 
@@ -262,9 +418,14 @@ func (c *Client) GetProfileByUUID(profile string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1profiles/get
-func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/profiles", &Params{
-		"uuid": uuid,
+func (c *Client) GetProfilesByPlayer(uuid string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/profiles",
+		Params: &Params{
+			"uuid": uuid,
+		},
 	})
 }
 
@@ -273,9 +434,14 @@ func (c *Client) GetProfilesByPlayer(uuid string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1museum/get
-func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/museum", &Params{
-		"profile": profile,
+func (c *Client) GetMuseumData(profile string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/museum",
+		Params: &Params{
+			"profile": profile,
+		},
 	})
 }
 
@@ -284,9 +450,14 @@ func (c *Client) GetMuseumData(profile string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1garden/get
-func (c *Client) GetGardenData(profile string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/garden", &Params{
-		"profile": profile,
+func (c *Client) GetGardenData(profile string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/garden",
+		Params: &Params{
+			"profile": profile,
+		},
 	})
 }
 
@@ -295,9 +466,16 @@ func (c *Client) GetGardenData(profile string) (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1bingo/get
-func (c *Client) GetBingoData(uuid string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "skyblock/bingo", &Params{
-		"uuid": uuid,
+// Note: Path conflicts with GetSkyBlockCurrentBingoEvent if both use "skyblock/bingo". The API doc link here is to /v2/skyblock/bingo.
+// This GET request to /v2/skyblock/bingo requires a `uuid` param for player data.
+func (c *Client) GetBingoData(uuid string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "skyblock/bingo", // Assuming this path is correct for player-specific bingo data when uuid is provided.
+		Params: &Params{
+			"uuid": uuid,
+		},
 	})
 }
 
@@ -305,8 +483,13 @@ func (c *Client) GetBingoData(uuid string) (*http.Response, error) {
 // Retrieve the currently active or upcoming Fire Sales for SkyBlock.
 //
 // https://api.hypixel.net/#tag/SkyBlock/paths/~1v2~1skyblock~1firesales/get
-func (c *Client) GetActiveOrUpcomingFireSales() (*http.Response, error) {
-	return c.Send(http.MethodGet, nil, "skyblock/firesales", nil)
+func (c *Client) GetActiveOrUpcomingFireSales() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: nil,
+		Path:   "skyblock/firesales",
+		Params: nil,
+	})
 }
 
 // GetCurrentlyActivePublicHouses currently active public houses.
@@ -314,8 +497,13 @@ func (c *Client) GetActiveOrUpcomingFireSales() (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1active/get
-func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "housing/active", nil)
+func (c *Client) GetCurrentlyActivePublicHouses() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "housing/active",
+		Params: nil,
+	})
 }
 
 // GetSpecificHouseInformation Information about a specific house.
@@ -323,9 +511,14 @@ func (c *Client) GetCurrentlyActivePublicHouses() (*http.Response, error) {
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1house/get
-func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "housing/house", &Params{
-		"house": house,
+func (c *Client) GetSpecificHouseInformation(house string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "housing/house",
+		Params: &Params{
+			"house": house,
+		},
 	})
 }
 
@@ -334,9 +527,14 @@ func (c *Client) GetSpecificHouseInformation(house string) (*http.Response, erro
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Housing/paths/~1v2~1housing~1houses/get
-func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "housing/houses", &Params{
-		"player": player,
+func (c *Client) GetSpecificPlayerPublicHouses(player string) (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "housing/houses",
+		Params: &Params{
+			"player": player,
+		},
 	})
 }
 
@@ -344,30 +542,50 @@ func (c *Client) GetSpecificPlayerPublicHouses(player string) (*http.Response, e
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1boosters/get
-func (c *Client) GetActiveNetworkBoosters() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "boosters", nil)
+func (c *Client) GetActiveNetworkBoosters() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "boosters",
+		Params: nil,
+	})
 }
 
 // GetCurrentPlayerCounts Current Player Counts
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1counts/get
-func (c *Client) GetCurrentPlayerCounts() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "counts", nil)
+func (c *Client) GetCurrentPlayerCounts() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "counts",
+		Params: nil,
+	})
 }
 
 // GetCurrentLeaderboards Current Leaderboards
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1leaderboards/get
-func (c *Client) GetCurrentLeaderboards() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "leaderboards", nil)
+func (c *Client) GetCurrentLeaderboards() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "leaderboards",
+		Params: nil,
+	})
 }
 
 // GetPunishmentStatistics Punishment Statistics
 // NEED API Key
 //
 // https://api.hypixel.net/#tag/Other/paths/~1v2~1punishmentstats/get
-func (c *Client) GetPunishmentStatistics() (*http.Response, error) {
-	return c.Send(http.MethodGet, c.AuthHeader(), "punishmentstats", nil)
+func (c *Client) GetPunishmentStatistics() (Response, error) {
+	return c.Get(Request{
+		Method: http.MethodGet,
+		Header: c.AuthHeader(),
+		Path:   "punishmentstats",
+		Params: nil,
+	})
 }
