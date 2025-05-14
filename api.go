@@ -67,7 +67,7 @@ func (c *Client) Get(r Request) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	resp := Response{Path: r.Path, URL: r.URL, Status: rsp.StatusCode, Content: content}
+	resp := Response{Header: rsp.Header, Path: r.Path, URL: r.URL, Status: rsp.StatusCode, Content: content}
 	if c.GetCallback() != nil {
 		response, err := c.GetCallback()(r, resp, err)
 		if err == nil {
