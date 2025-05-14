@@ -66,8 +66,8 @@ func (c *Client) Get(r Request) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-	if c.GetCallBack() == nil {
-		response, err := c.GetCallBack()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
+	if c.GetCallback() == nil {
+		response, err := c.GetCallback()(r, Response{Path: full, Status: rsp.StatusCode, Content: content}, err)
 		if err == nil {
 			return response, nil
 		}

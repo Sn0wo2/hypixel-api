@@ -6,7 +6,7 @@ import (
 )
 
 type PreRequestHook func(request Request) (Response, error)
-type CallBack func(request Request, response Response, err error) (Response, error)
+type Callback func(request Request, response Response, err error) (Response, error)
 
 type Client struct {
 	baseURL        string
@@ -14,7 +14,7 @@ type Client struct {
 	httpClient     *http.Client
 	rate           *RateLimit
 	preRequestHook PreRequestHook
-	callBack       CallBack
+	callBack       Callback
 }
 
 // NewClient creates a new hypixel client
@@ -50,7 +50,7 @@ func (c *Client) GetPreRequestHook() PreRequestHook {
 	return c.preRequestHook
 }
 
-func (c *Client) GetCallBack() CallBack {
+func (c *Client) GetCallback() Callback {
 	return c.callBack
 }
 
@@ -78,6 +78,6 @@ func (c *Client) SetPreRequestHook(beforeSend PreRequestHook) {
 	c.preRequestHook = beforeSend
 }
 
-func (c *Client) SetCallBack(callBack CallBack) {
+func (c *Client) SetCallback(callBack Callback) {
 	c.callBack = callBack
 }
