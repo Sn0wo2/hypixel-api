@@ -17,3 +17,5 @@ Hypixel API wrapper in Golang
 ## License
  
 [GPL-3.0](LICENSE)
+
+* hypixel-api is not affiliated or endorsed by [Hypixel](https://www.hypixel.net)
