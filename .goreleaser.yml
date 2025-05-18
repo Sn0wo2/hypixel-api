@@ -1,4 +1,4 @@
-project_name: hypixel-api
+project_name: go-hypixel-api
 
 builds:
   - # If true, skip the build.
