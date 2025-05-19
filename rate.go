@@ -73,8 +73,10 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 		return nil
 	}
 	// when status code 429, remaining is fake(0)
+	//
+	// 429 A request limit has been reached, usually this is due to the limit on the key being reached but can also be triggered by a global throttle.
 	if resp.StatusCode == 429 && remStr == "0" {
-		r.remaining.Store(-1)
+		r.remaining.Add(-1)
 		return nil
 	}
 	rem, err := strconv.Atoi(remStr)
