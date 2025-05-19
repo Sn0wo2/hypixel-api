@@ -4,13 +4,16 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type RateLimit struct {
-	remaining atomic.Int32 // -1 == unknown, >0 == calls left
-	resetAt   atomic.Value // holds time.Time
+	remaining atomic.Int32  // -1 == unknown, >0 == calls left
+	resetAt   atomic.Value  // holds time.Time
+	mu        sync.Mutex    // protects waitCh
+	waitCh    chan struct{} // closed when reset time is reached
 }
 
 func NewRateLimit() *RateLimit {
@@ -22,32 +25,46 @@ func NewRateLimit() *RateLimit {
 
 // WaitIfNeeded blocks until rate-limit reset if remaining ≤ 0 and resetAt is in the future.
 func (r *RateLimit) WaitIfNeeded() {
-	if r.remaining.Load() >= 0 {
-		return
-	}
+	for {
+		r.mu.Lock()
+		rem := r.remaining.Load()
+		reset := r.resetAt.Load().(time.Time)
 
-	reset := r.resetAt.Load().(time.Time)
-	if reset.IsZero() || time.Now().After(reset) {
-		return
-	}
+		if rem >= 0 || reset.IsZero() || time.Now().After(reset) {
+			r.mu.Unlock()
+			return
+		}
 
-	// Sleep up to the reset time (capped to hypixel api max reset: 5min)
-	sleep := time.Until(reset)
-	const maxSleep = 5 * time.Minute
-	if sleep > maxSleep {
-		sleep = maxSleep
+		// ensure exactly one sleeper
+		if r.waitCh == nil {
+			ch := make(chan struct{})
+			r.waitCh = ch
+			go func(ch chan struct{}, reset time.Time) {
+				sleep := time.Until(reset)
+				if max := 5 * time.Minute; sleep > max {
+					sleep = max
+				}
+				time.Sleep(sleep)
+				r.mu.Lock()
+				close(ch)
+				r.waitCh = nil
+				r.mu.Unlock()
+			}(ch, reset)
+		}
+
+		ch := r.waitCh
+		r.mu.Unlock()
+
+		<-ch
 	}
-	time.Sleep(sleep)
 }
 
 // UpdateFromResponse updates rate limit state based on the HTTP response.
 func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 	resetStr := resp.Header.Get("RateLimit-Reset")
-	// always trust reset header if not empty
 	if resetStr != "" {
 		if secs, err := strconv.Atoi(resetStr); err == nil {
-			resetTime := time.Now().Add(time.Duration(secs) * time.Second)
-			r.resetAt.Store(resetTime)
+			r.resetAt.Store(time.Now().Add(time.Duration(secs) * time.Second))
 		} else {
 			return err
 		}
@@ -59,24 +76,17 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 	}
 
 	remStr := resp.Header.Get("RateLimit-Remaining")
-	rem, err := strconv.Atoi(remStr)
-	if err != nil {
-		return err
-	}
-
-	// trust remaining header if status code not 429
-	//
-	// Example(api return 0 remaining header):
-	// {"success":false,"cause":"You have already looked up this player too recently, please try again shortly"}
-	// {"success":false,"cause":"Too many requests in the last second","throttle":true}
 	if remStr != "" {
-		switch {
-		case rem > math.MinInt32 && rem <= math.MaxInt32:
-			r.remaining.Store(int32(rem))
-		default:
-			r.remaining.Store(-1)
+		if rem, err := strconv.Atoi(remStr); err == nil {
+			if rem > math.MinInt32 && rem <= math.MaxInt32 {
+				r.remaining.Store(int32(rem))
+			} else {
+				r.remaining.Store(-1)
+			}
+			return nil
+		} else {
+			return err
 		}
-		return nil
 	}
 
 	if r.remaining.Load() > 0 {
