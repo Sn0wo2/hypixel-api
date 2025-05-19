@@ -30,7 +30,7 @@ func (r *RateLimit) WaitIfNeeded() {
 		rem := r.remaining.Load()
 		reset := r.resetAt.Load().(time.Time)
 
-		if rem >= 0 || reset.IsZero() || time.Now().After(reset) {
+		if rem > 0 || reset.IsZero() || time.Now().After(reset) {
 			r.mu.Unlock()
 			return
 		}
