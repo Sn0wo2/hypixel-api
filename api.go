@@ -89,7 +89,7 @@ func (c *Client) AuthHeader(header ...http.Header) http.Header {
 	} else {
 		h = header[0]
 	}
-	h.Set("API-Key", c.apiKey)
+	h.Set("API-Key", c.GetAPIKey())
 	return h
 }
 
