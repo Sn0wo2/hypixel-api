@@ -35,14 +35,13 @@ func (r *RateLimit) WaitIfNeeded() {
 			return
 		}
 
-		// ensure exactly one sleeper
 		if r.waitCh == nil {
 			ch := make(chan struct{})
 			r.waitCh = ch
 			go func(ch chan struct{}, reset time.Time) {
 				sleep := time.Until(reset)
-				if max := 5 * time.Minute; sleep > max {
-					sleep = max
+				if m := 5 * time.Minute; sleep > m { // m: max hypixel api reset cd
+					sleep = m
 				}
 				time.Sleep(sleep)
 				r.mu.Lock()
@@ -61,8 +60,7 @@ func (r *RateLimit) WaitIfNeeded() {
 
 // UpdateFromResponse updates rate limit state based on the HTTP response.
 func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
-	resetStr := resp.Header.Get("RateLimit-Reset")
-	if resetStr != "" {
+	if resetStr := resp.Header.Get("RateLimit-Reset"); resetStr != "" {
 		if secs, err := strconv.Atoi(resetStr); err == nil {
 			r.resetAt.Store(time.Now().Add(time.Duration(secs) * time.Second))
 		} else {
@@ -70,27 +68,25 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 		}
 	}
 
-	if resp.StatusCode == 429 {
+	remStr := resp.Header.Get("RateLimit-Remaining")
+	if remStr == "" {
+		return nil
+	}
+	// when status code 429, remaining is fake(0)
+	if resp.StatusCode == 429 && remStr == "0" {
 		r.remaining.Store(-1)
 		return nil
 	}
-
-	remStr := resp.Header.Get("RateLimit-Remaining")
-	if remStr != "" {
-		if rem, err := strconv.Atoi(remStr); err == nil {
-			if rem > math.MinInt32 && rem <= math.MaxInt32 {
-				r.remaining.Store(int32(rem))
-			} else {
-				r.remaining.Store(-1)
-			}
-			return nil
-		} else {
-			return err
-		}
+	rem, err := strconv.Atoi(remStr)
+	if err != nil {
+		return err
 	}
-
-	if r.remaining.Load() > 0 {
-		r.remaining.Add(-1)
+	// code ql
+	if rem > math.MinInt32 && rem <= math.MaxInt32 {
+		r.remaining.Store(int32(rem))
+	} else {
+		// fallback
+		r.remaining.Store(-1)
 	}
 	return nil
 }
