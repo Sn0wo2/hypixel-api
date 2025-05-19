@@ -103,7 +103,7 @@ func (r *RateLimit) GetRemaining() int32 {
 	return r.remaining.Load()
 }
 
-func (r *RateLimit) GetResetAT() time.Time {
+func (r *RateLimit) GetResetAt() time.Time {
 	return r.resetAt.Load().(time.Time)
 }
 
