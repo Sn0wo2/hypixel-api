@@ -99,6 +99,14 @@ func (r *RateLimit) Reset() {
 	r.resetAt.Store(time.Time{})
 }
 
+func (r *RateLimit) GetRemaining() int32 {
+	return r.remaining.Load()
+}
+
+func (r *RateLimit) GetResetAT() time.Time {
+	return r.resetAt.Load().(time.Time)
+}
+
 // String impl fmt.Stringer
 func (r *RateLimit) String() string {
 	reset := r.resetAt.Load().(time.Time)
